@@ -18,7 +18,8 @@ and in the watch-page playlist panel.
 4. **Hiding only.** `data-ytpf-hidden="1"` plus one rule
    (`[data-ytpf-hidden="1"]{display:none!important}`). Never touch YouTube state, never
    remove rows from the DOM.
-5. **Core is required, pinned:** `@require …/yt-core-lib-1.2.0.js`.
+5. **Core is required, pinned:** `@require …/yt-core-lib-1.3.0.js`. 1.3.0 reuses the
+   `.ytk2-bar` already in the DOM; 1.2.0 drew one bar per script sandbox.
 
 ## Why the code looks the way it does
 
@@ -36,7 +37,9 @@ and in the watch-page playlist panel.
   for `/^\d{1,2}:\d{2}(:\d{2})?$/` before falling back to the legacy `#time-status #text`.
 - **Typing must not reach YouTube.** The input's `keydown` stops propagation, so `k`, `j`,
   digits and `/` type instead of triggering player shortcuts.
-- **Settings survive because of `onSave`.** Core 1.2.0's `openSettings` rebuilds
+- **The AI grants stay.** The shared settings popup renders its AI section, which needs
+  `GM_xmlhttpRequest`; dropping that grant (or `@connect *`) makes the connection test fail.
+- **Settings survive because of `onSave`.** Core 1.3.0's `openSettings` rebuilds
   `ytk.settings` from its own defaults and drops keys it does not know
   (`filterScope`, `filterUseRegex`, `filterReapply`). The `onSave` merge restores them.
 - **Closing the panel clears the filter.** The ✕ is hooked with an extra listener so rows can

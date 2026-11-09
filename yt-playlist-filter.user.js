@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         YT Playlist Filter
 // @namespace    https://github.com/chirag127
-// @version      1.0.1
+// @version      1.0.2
 // @description  Live filter over playlist rows on /playlist and in the watch-page playlist panel. Escape clears.
 // @author       chirag127
 // @license      MIT
 // @match        https://www.youtube.com/*
-// @require      https://raw.githubusercontent.com/chirag127/yt-core-lib/main/yt-core-lib-1.3.0.js
+// @require      https://raw.githubusercontent.com/chirag127/yt-core-lib/main/yt-core-lib-1.4.0.js
 // @downloadURL  https://raw.githubusercontent.com/chirag127/yt-playlist-filter-userscript/main/yt-playlist-filter.user.js
 // @updateURL    https://raw.githubusercontent.com/chirag127/yt-playlist-filter-userscript/main/yt-playlist-filter.user.js
 // @grant        GM_getValue
@@ -213,7 +213,7 @@
       subtitle: 'Live filter over the playlist page and the watch-page playlist panel.',
       sectionTitle: 'Matching',
       fields: fields,
-      // Core 1.2.0 keeps only its own settings keys on save; re-merge this script's keys.
+      // Core 1.3.0 keeps only its own settings keys on save; re-merge this script's keys.
       onSave: function (next) { Ytk.storeSet('settings', Object.assign({}, before, next)); }
     });
   });
@@ -225,6 +225,9 @@
     Ytk.mountToolbar([{ label: 'Filter', run: openFilter }]);
   }
   mount();
-  if (!mounted) document.addEventListener('yt-navigate-finish', mount);
+  // The sidebar panel often renders after document-idle, and an in-app navigation
+  // never reloads the page, so both events retry the idempotent mount.
+  document.addEventListener('yt-navigate-finish', mount);
+  document.addEventListener('yt-page-data-updated', mount);
   document.addEventListener('yt-navigate-finish', function () { drop(); unhideAll(); query = ''; });
 })();
