@@ -1,14 +1,54 @@
-# AGENTS.md — yt-playlist-filter-userscript
+# AGENTS.md — YT Playlist Filter
 
-Read the collection [`AGENTS.md`](../AGENTS.md) and [`PLAN.md`](../PLAN.md) first.
+Read the collection rules first: [`../AGENTS.md`](../AGENTS.md). Documentation lives once in
+`c:\ws\docs\okf\` — do not create an `okf/` copy here.
 
-## Rules for this script
+## What this repo is
 
-1. Requires `yt-core-lib` for everything shared. Never copy InnerTube, AI or storage code here.
-2. EXACTLY ONE context-menu entry: `Settings…` calling `Ytk.openSettings({...})`.
-3. Its action goes on the shared toolbar via `Ytk.mountToolbar`. Never draw its own bar.
-4. No `innerHTML` — YouTube enforces Trusted Types and the throw is silent inside handlers.
-5. Read-only. This script must never write to YouTube.
-6. Playlist rows come in two shapes: current `yt-lockup-view-model` and legacy
-   `ytd-playlist-video-renderer`. Handle both.
-7. Gate on `Ytk.featureOn(<id>, true)` and return early when off.
+One userscript, one job: hide playlist rows that do not match a typed query, on `/playlist`
+and in the watch-page playlist panel.
+
+## Non-negotiables
+
+1. **Exactly one context-menu entry**, `Settings…`, calling `Ytk.openSettings`.
+2. **Never `innerHTML`.** The input and buttons are built with `Ytk.h`; the only CSS this
+   script injects is the one hiding rule.
+3. **The shared toolbar and shared panel are the only chrome.** No custom floating bar.
+   The filter input lives inside `Ytk.panel` — that is core chrome, not a second surface.
+4. **Hiding only.** `data-ytpf-hidden="1"` plus one rule
+   (`[data-ytpf-hidden="1"]{display:none!important}`). Never touch YouTube state, never
+   remove rows from the DOM.
+5. **Core is required, pinned:** `@require …/yt-core-lib-1.2.0.js`.
+
+## Why the code looks the way it does
+
+- **One attribute, one rule.** Hiding via elements' inline `style.display` is undone whenever
+  YouTube re-renders the row. A data attribute plus a stylesheet survives re-render and is
+  trivially reversible.
+- **The observer is deliberately narrow.** Rows page in on scroll, so a stale filter silently
+  stops working. The observer watches only the playlist root, is debounced, does nothing when
+  the query is empty, and disconnects when the panel is gone. Do not widen it to
+  `document.body`.
+- **Both row shapes.** Current rows are `yt-lockup-view-model` (data in
+  `node.data.lockupViewModel`); older sessions still render `ytd-playlist-video-renderer` and
+  the sidebar's `ytd-playlist-panel-video-renderer`. All three are read.
+- **Duration is in a bare badge anchor** on lockup rows, so the row reader scans anchor text
+  for `/^\d{1,2}:\d{2}(:\d{2})?$/` before falling back to the legacy `#time-status #text`.
+- **Typing must not reach YouTube.** The input's `keydown` stops propagation, so `k`, `j`,
+  digits and `/` type instead of triggering player shortcuts.
+- **Settings survive because of `onSave`.** Core 1.2.0's `openSettings` rebuilds
+  `ytk.settings` from its own defaults and drops keys it does not know
+  (`filterScope`, `filterUseRegex`, `filterReapply`). The `onSave` merge restores them.
+- **Closing the panel clears the filter.** The ✕ is hooked with an extra listener so rows can
+  never stay hidden behind a query the user can no longer see.
+
+## Verification before claiming a change works
+
+```bash
+node --check yt-playlist-filter.user.js
+grep -c "GM_registerMenuCommand(" yt-playlist-filter.user.js   # must be 1
+grep -c "innerHTML" yt-playlist-filter.user.js                 # must be 0
+```
+
+Then test live on `/playlist` and on a watch page with a playlist sidebar: type, scroll to
+force re-render, press Escape. Say whether you ran that or only the static checks.
